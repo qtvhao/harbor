@@ -47,10 +47,17 @@ class KafkaExpressApp {
         this.app.get('/tasks/completed/:taskId/downloads/:download', this.downloadCompletedTask.bind(this));
     }
 
+    /**
+     * Initializes a Kafka consumer to listen for new tasks.
+     * 
+     * This consumer listens to the topic defined by NEW_TASK_TOPIC (default: 'enkyuu-prompts').
+     * Whenever a new message is published to this topic, the handler `handleNewTaskMessage`
+     * will process it and push the task into the `taskQueue` for later dispatch.
+     */
     private initializeNewTaskConsumer(): void {
         console.debug('Initializing Kafka New Task Consumer');
         startKafkaConsumer({
-            topic: process.env.DELAYED_RESPONSE_TOPIC || 'enkyuu-prompts',
+            topic: process.env.NEW_TASK_TOPIC || 'new-task-topic',
             groupId: 'harbor-group',
             eachMessageHandler: this.handleNewTaskMessage.bind(this),
         });
@@ -59,7 +66,7 @@ class KafkaExpressApp {
     private initializeTaskResponseConsumer(): void {
         console.debug('Initializing Kafka Task Response Consumer');
         startKafkaConsumer({
-            topic: process.env.DISPATCHED_RESPONSE_TOPIC || 'dispatched-task-response',
+            topic: process.env.TASK_RESPONSE_TOPIC || 'task-response-topic',
             groupId: 'harbor-group',
             eachMessageHandler: this.handleTaskResponseMessage.bind(this),
         });
@@ -136,6 +143,15 @@ class KafkaExpressApp {
         console.log(`Task added to queue: ${task.id} for account: ${accountId}`);
     }
 
+    /**
+     * Handles responses for dispatched tasks from Kafka.
+     * 
+     * This method listens to the TASK_RESPONSE_TOPIC (default: 'dispatched-task-response').
+     * Upon receiving a response message, it parses the message and removes the task from `pendingTasks`.
+     * If the task exists, it is marked as completed by adding it to the `completedTasks` map.
+     * 
+     * This allows clients to later retrieve the completed task using the provided API endpoints.
+     */
     private async handleTaskResponseMessage({ message }: EachMessagePayload): Promise<void> {
         console.debug('Handling task response message');
         const payload = this.parseKafkaMessage(message);
@@ -192,9 +208,19 @@ class KafkaExpressApp {
         }
     }
 
+    /**
+     * Dispatches a queued task for a specific account to the Kafka topic.
+     * 
+     * This endpoint is triggered via POST /task/dispatch?accountId={accountId}.
+     * It checks the `taskQueue` for tasks matching the given accountId.
+     * If a task is found, it is moved to the `pendingTasks` list and published
+     * to the Kafka topic defined by TASK_DISPATCH_TOPIC (default: 'processed-tasks').
+     * 
+     * If no task is available for the account, it returns a 404 response.
+     */
     private async dispatchJob(req: Request, res: Response): Promise<void> {
         const accountId = Number(req.query.accountId);
-        const targetTopic = process.env.JOB_DISPATCH_TOPIC || 'processed-tasks';
+        const targetTopic = process.env.TASK_DISPATCH_TOPIC || 'task-dispatch-topic';
 
         console.debug('Dispatch job request received for accountId:', accountId);
 
