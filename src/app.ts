@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface Task {
     id: string;
     payload: any;
+    accountId: string;
 }
 
 class KafkaExpressApp {
@@ -53,13 +54,21 @@ class KafkaExpressApp {
 
         try {
             const payload = JSON.parse(messageValue);
+
+            const accountId = payload.accountId;
+            if (!accountId) {
+                console.warn('Received message without accountId. Skipping.');
+                return;
+            }
+
             const task: Task = {
                 id: uuidv4(),
                 payload,
+                accountId,
             };
 
             this.taskQueue.push(task);
-            console.log(`Task added to queue: ${task.id}`);
+            console.log(`Task added to queue: ${task.id} for account: ${accountId}`);
         } catch (error) {
             console.error('Failed to parse message:', error);
         }
@@ -87,13 +96,22 @@ class KafkaExpressApp {
         }
     }
 
-    private fetchTask(_req: Request, res: Response): void {
-        if (this.taskQueue.length === 0) {
-            res.status(404).json({ error: 'No tasks available.' });
+    private fetchTask(req: Request, res: Response): void {
+        const accountId = req.query.accountId as string;
+
+        if (!accountId) {
+            res.status(400).json({ error: 'accountId query parameter is required.' });
             return;
         }
 
-        const task = this.taskQueue.shift()!;
+        const taskIndex = this.taskQueue.findIndex(task => task.accountId === accountId);
+
+        if (taskIndex === -1) {
+            res.status(404).json({ error: `No tasks available for accountId: ${accountId}` });
+            return;
+        }
+
+        const [task] = this.taskQueue.splice(taskIndex, 1);
         this.pendingTasks.set(task.id, task);
 
         res.status(200).json({ task });
