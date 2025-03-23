@@ -4,6 +4,9 @@ FROM node:18-alpine AS builder
 # Set working directory inside the container
 WORKDIR /app
 
+# Install git and openssh-client
+RUN apk add --no-cache git openssh-client
+
 # Install Yarn globally
 RUN corepack enable && corepack prepare yarn@stable --activate
 

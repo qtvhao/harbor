@@ -9,7 +9,7 @@ import { ChatCompletionService } from 'tekisuto-client/dist/ChatCompletionServic
 interface Task {
     id: string;
     payload: any;
-    accountId: string;
+    accountId: number;
 }
 
 class KafkaExpressApp {

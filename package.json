@@ -8,7 +8,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "kafkajs": "^2.2.4",
-    "tekisuto-client": "github:qtvhao/tekisuto-client",
+    "tekisuto-client": "git+http://github.com/qtvhao/tekisuto-client",
     "typescript": "^5.8.2",
     "uuid": "^11.1.0"
   },
