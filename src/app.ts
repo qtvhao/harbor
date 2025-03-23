@@ -116,9 +116,15 @@ class KafkaExpressApp {
     }
 
     private async fetchTask(req: Request, res: Response): Promise<void> {
-        const accountId = req.query.accountId as string;
+        const accountId = Number(req.query.accountId);
 
         console.debug('Fetch task request received for accountId:', accountId);
+
+        if (isNaN(accountId)) {
+            console.warn('Invalid accountId provided, must be a number');
+            res.status(400).json({ error: 'accountId query parameter must be a number.' });
+            return;
+        }
 
         if (!accountId) {
             console.warn('No accountId provided in fetch task request');
