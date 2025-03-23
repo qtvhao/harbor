@@ -4,7 +4,6 @@ import { sendMessageToQueue } from './utils/kafkaHelper.js';
 import { startKafkaConsumer } from './kafka/kafkaConsumer.js';
 import { EachMessagePayload } from 'kafkajs';
 import { v4 as uuidv4 } from 'uuid';
-import { ChatCompletionService } from 'tekisuto-client/dist/ChatCompletionService.js';
 
 interface Task {
     id: string;
@@ -17,7 +16,6 @@ class KafkaExpressApp {
     private port: number;
     private taskQueue: Task[];
     private pendingTasks: Map<string, Task>;
-    private chatCompletionService: ChatCompletionService;
 
     constructor(port: number) {
         console.debug('Initializing KafkaExpressApp');
@@ -25,9 +23,6 @@ class KafkaExpressApp {
         this.port = port;
         this.taskQueue = [];
         this.pendingTasks = new Map();
-
-        this.chatCompletionService = new ChatCompletionService('gpt-4', 'chat-completion-readaloud');
-        console.debug('ChatCompletionService initialized with model=gpt-4 and output=chat-completion-readaloud');
 
         this.configureMiddleware();
         this.defineRoutes();
@@ -43,7 +38,7 @@ class KafkaExpressApp {
         console.debug('Defining routes');
         this.app.get('/health', this.healthCheck.bind(this));
         this.app.post('/publish/:topic', this.publishMessage.bind(this));
-        this.app.get('/task/fetch', this.fetchTask.bind(this));
+        this.app.post('/task/dispatch', this.dispatchJob.bind(this));
         this.app.post('/task/ack/:taskId', this.acknowledgeTask.bind(this));
         this.app.post('/task/nack/:taskId', this.negativelyAcknowledgeTask.bind(this));
     }
@@ -115,10 +110,11 @@ class KafkaExpressApp {
         }
     }
 
-    private async fetchTask(req: Request, res: Response): Promise<void> {
+    private async dispatchJob(req: Request, res: Response): Promise<void> {
         const accountId = Number(req.query.accountId);
+        const targetTopic = process.env.JOB_DISPATCH_TOPIC || 'processed-tasks';
 
-        console.debug('Fetch task request received for accountId:', accountId);
+        console.debug('Dispatch job request received for accountId:', accountId);
 
         if (isNaN(accountId)) {
             console.warn('Invalid accountId provided, must be a number');
@@ -127,7 +123,7 @@ class KafkaExpressApp {
         }
 
         if (!accountId) {
-            console.warn('No accountId provided in fetch task request');
+            console.warn('No accountId provided in dispatch job request');
             res.status(400).json({ error: 'accountId query parameter is required.' });
             return;
         }
@@ -143,30 +139,21 @@ class KafkaExpressApp {
         const [task] = this.taskQueue.splice(taskIndex, 1);
         this.pendingTasks.set(task.id, task);
 
-        console.debug(`Fetched task: ${task.id}, fetching completion...`);
-
         try {
-            const completionResponse = await this.chatCompletionService.fetchCompletion(task.payload.prompt);
+            await sendMessageToQueue(targetTopic, {
+                taskId: task.id,
+                payload: task.payload,
+                accountId: task.accountId,
+            });
 
-            if (!completionResponse) {
-                console.error('Completion response is null or undefined');
-                res.status(500).json({ error: 'Failed to fetch completion.' });
-                return;
-            }
-
-            console.debug('Completion response fetched successfully:', completionResponse);
-
+            console.log(`Task ${task.id} dispatched to topic ${targetTopic}`);
             res.status(200).json({
-                completion: {
-                    markdown_text: completionResponse.markdown_text,
-                    audio_base64: completionResponse.audio_base64,
-                    conversation_id: completionResponse.conversation_id,
-                    error: completionResponse.error || null,
-                }
+                message: `Task ${task.id} dispatched successfully.`,
+                taskId: task.id
             });
         } catch (error) {
-            console.error('Error fetching completion:', error);
-            res.status(500).json({ error: 'An error occurred while fetching completion.' });
+            console.error('Failed to dispatch job:', error);
+            res.status(500).json({ error: 'Failed to dispatch job to Kafka.' });
         }
     }
 
