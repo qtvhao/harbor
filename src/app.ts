@@ -58,7 +58,7 @@ class KafkaExpressApp {
         console.debug('Initializing Kafka New Task Consumer');
         startKafkaConsumer({
             topic: process.env.NEW_TASK_TOPIC || 'new-task-topic',
-            groupId: 'harbor-group',
+            groupId: 'harbor-new-task-group',
             eachMessageHandler: this.handleNewTaskMessage.bind(this),
         });
     }
@@ -67,7 +67,7 @@ class KafkaExpressApp {
         console.debug('Initializing Kafka Task Response Consumer');
         startKafkaConsumer({
             topic: process.env.TASK_RESPONSE_TOPIC || 'task-response-topic',
-            groupId: 'harbor-group',
+            groupId: 'harbor-task-response-group',
             eachMessageHandler: this.handleTaskResponseMessage.bind(this),
         });
     }
