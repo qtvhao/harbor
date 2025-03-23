@@ -50,7 +50,7 @@ class KafkaExpressApp {
     /**
      * Initializes a Kafka consumer to listen for new tasks.
      * 
-     * This consumer listens to the topic defined by NEW_TASK_TOPIC (default: 'enkyuu-prompts').
+     * This consumer listens to the topic defined by NEW_TASK_TOPIC (default: 'new-task-topic').
      * Whenever a new message is published to this topic, the handler `handleNewTaskMessage`
      * will process it and push the task into the `taskQueue` for later dispatch.
      */
