@@ -5,6 +5,12 @@ import { startKafkaConsumer } from './kafka/kafkaConsumer.js';
 import { EachMessagePayload } from 'kafkajs';
 import { v4 as uuidv4 } from 'uuid';
 
+interface TaskResponsePayload {
+    taskId: string;
+    accountId: number;
+    fileKey?: string;
+}
+
 interface Task {
     id: string;
     payload: any;
@@ -97,7 +103,7 @@ class KafkaExpressApp {
     private removePendingTask(taskId: string): Task | null {
         console.debug(`Attempting to remove task with ID: ${taskId} from pendingTasks`);
         const task = this.pendingTasks.get(taskId);
-        
+
         if (!task) {
             console.debug(`Condition: task with ID ${taskId} not found`);
             console.warn(`Task ${taskId} not found in pendingTasks`);
@@ -154,12 +160,13 @@ class KafkaExpressApp {
      */
     private async handleTaskResponseMessage({ message }: EachMessagePayload): Promise<void> {
         console.debug('Handling task response message');
-        const payload = this.parseKafkaMessage(message);
-        if (!payload) {
+        const rawPayload = this.parseKafkaMessage(message);
+        if (!rawPayload) {
             console.debug('Condition: payload is null, exiting handleTaskResponseMessage');
             return;
         }
 
+        const payload: TaskResponsePayload = rawPayload;
         const taskId = payload.taskId;
         if (!taskId) {
             console.debug('Condition: taskId missing from payload');
