@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface TaskResponsePayload {
     taskId: string;
     accountId: number;
-    fileKey?: string;
+    downloads: string[];
 }
 
 interface Task {
