@@ -320,7 +320,7 @@ class KafkaExpressApp {
         const downloadData = task.downloads?.[downloadId];
 
         if (!downloadData) {
-            console.debug(`Condition: download ${downloadId} not found for task ${taskId}`);
+            console.debug(`Condition: download ${downloadId} not found for task ${taskId}`, task);
             res.status(404).json({ error: `Download ${downloadId} not found for task ${taskId}.` });
             return;
         }
