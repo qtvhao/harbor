@@ -14,6 +14,7 @@ interface TaskResponsePayload {
 interface Task {
     id: string;
     payload: any;
+    downloads?: string[];
     accountId: number;
 }
 
@@ -316,7 +317,7 @@ class KafkaExpressApp {
             return;
         }
 
-        const downloadData = task.payload.downloads?.[downloadId];
+        const downloadData = task.downloads?.[downloadId];
 
         if (!downloadData) {
             console.debug(`Condition: download ${downloadId} not found for task ${taskId}`);
