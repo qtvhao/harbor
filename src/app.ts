@@ -72,6 +72,7 @@ class KafkaExpressApp {
     private initializeTaskResponseConsumer(): void {
         console.debug('Initializing Kafka Task Response Consumer');
         startKafkaConsumer({
+            fromBeginning: true,
             topic: process.env.TASK_RESPONSE_TOPIC || 'task-response-topic',
             groupId: 'harbor-task-response-group',
             eachMessageHandler: this.handleTaskResponseMessage.bind(this),
@@ -296,8 +297,15 @@ class KafkaExpressApp {
     }
 
     private downloadCompletedTask(req: Request, res: Response): void {
+        const downloadIdStr = req.params.download;
+        const downloadId = Number(downloadIdStr);
+        if (isNaN(downloadId)) {
+            console.debug(`Condition: downloadId ${downloadIdStr} is not a number`);
+            res.status(400).json({ error: `Download ID must be a number.` });
+            return;
+        }
+
         const taskId = req.params.taskId;
-        const downloadId = req.params.download;
         console.debug(`Download request received for task ID: ${taskId} and download ID: ${downloadId}`);
 
         const task = this.completedTasks.get(taskId);

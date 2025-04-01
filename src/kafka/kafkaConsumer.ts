@@ -5,6 +5,7 @@ interface KafkaConsumerOptions {
     topic: string;
     groupId: string;
     eachMessageHandler: (payload: EachMessagePayload) => Promise<void>;
+    fromBeginning?: boolean;
 }
 
 /**
@@ -26,7 +27,7 @@ const ensureTopicExists = async (kafka: Kafka, topic: string): Promise<void> => 
 /**
  * Starts a Kafka consumer with a given topic and message handler.
  */
-export const startKafkaConsumer = async ({ topic, groupId, eachMessageHandler }: KafkaConsumerOptions): Promise<void> => {
+export const startKafkaConsumer = async ({ topic, groupId, eachMessageHandler, fromBeginning }: KafkaConsumerOptions): Promise<void> => {
     const kafka: Kafka = getKafkaConnection();
     const consumer: Consumer = kafka.consumer({ groupId });
 
@@ -35,7 +36,7 @@ export const startKafkaConsumer = async ({ topic, groupId, eachMessageHandler }:
         await consumer.connect();
         console.log(`✅ Kafka Consumer connected (Group: ${groupId})`);
 
-        await consumer.subscribe({ topic, fromBeginning: false });
+        await consumer.subscribe({ topic, fromBeginning: fromBeginning ?? false });
         console.log(`🎧 Listening for messages on topic: ${topic}`);
 
         await consumer.run({ eachMessage: eachMessageHandler });
