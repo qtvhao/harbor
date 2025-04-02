@@ -180,7 +180,12 @@ class KafkaExpressApp {
 
         if (task) {
             console.debug(`Condition: task ${taskId} found and removed from pendingTasks`);
-            this.markTaskAsCompleted(task);
+            this.markTaskAsCompleted({
+                downloads: payload.downloads,
+                payload: task.payload,
+                id: task.id,
+                accountId: task.accountId,
+            });
         } else {
             console.debug(`Condition: task ${taskId} not found in pendingTasks`);
             console.warn(`Could not mark task ${taskId} as completed because it was not found in pendingTasks`);
