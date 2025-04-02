@@ -1,9 +1,11 @@
 import express, { Application, Request, Response } from 'express';
+import fs from 'fs';
 import bodyParser from 'body-parser';
 import { sendMessageToQueue } from './utils/kafkaHelper.js';
 import { startKafkaConsumer } from './kafka/kafkaConsumer.js';
 import { EachMessagePayload } from 'kafkajs';
 import { v4 as uuidv4 } from 'uuid';
+import { Storage } from './utils/storage.js';
 
 interface TaskResponsePayload {
     taskId: string;
@@ -24,8 +26,10 @@ class KafkaExpressApp {
     private taskQueue: Task[];
     private pendingTasks: Map<string, Task>;
     private completedTasks: Map<string, Task>;
+    private storage: Storage;
 
     constructor(port: number) {
+        this.storage = Storage.getInstance();
         console.debug('Initializing KafkaExpressApp');
         this.app = express();
         this.port = port;
@@ -302,7 +306,7 @@ class KafkaExpressApp {
         res.status(200).json({ task });
     }
 
-    private downloadCompletedTask(req: Request, res: Response): void {
+    private async downloadCompletedTask(req: Request, res: Response): Promise<void> {
         const downloadIdStr = req.params.download;
         const downloadId = Number(downloadIdStr);
         if (isNaN(downloadId)) {
@@ -322,16 +326,31 @@ class KafkaExpressApp {
             return;
         }
 
-        const downloadData = task.downloads?.[downloadId];
+        const fileName = task.downloads?.[downloadId];
 
-        if (!downloadData) {
+        if (!fileName) {
             console.debug(`Condition: download ${downloadId} not found for task ${taskId}`, task);
             res.status(404).json({ error: `Download ${downloadId} not found for task ${taskId}.` });
             return;
         }
 
-        console.debug(`Condition: download ${downloadId} found for task ${taskId}`);
-        res.status(200).json({ download: downloadData });
+        const downloadPath = `/tmp/${fileName}`;
+        try {
+            await this.storage.downloadFile(fileName, downloadPath);
+            console.debug(`Condition: file ${fileName} downloaded successfully to ${downloadPath}`);
+            res.setHeader('Content-Type', 'video/mp4');
+            res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+            const fileStream = fs.createReadStream(downloadPath);
+            fileStream.pipe(res);
+            fileStream.on('error', (err) => {
+                console.error(`Error reading file ${fileName}:`, err);
+                res.status(500).json({ error: `Failed to stream file ${fileName}.` });
+            });
+        } catch (error) {
+            console.debug(`Condition: failed to download file ${fileName}`);
+            console.error(`Failed to download file ${fileName}:`, error);
+            res.status(500).json({ error: `Failed to download file ${fileName}.` });
+        }
     }
 
     public start(): void {

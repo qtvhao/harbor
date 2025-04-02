@@ -4,12 +4,20 @@ import { config } from '../config.js'
 import { randomBytes } from 'crypto';
 
 export class Storage {
+    private static instance: Storage;
     private client = minioClient;
     private bucketName: string;
 
     constructor() {
         this.bucketName = config.minio.bucketName;
         this.ensureBucketExists();
+    }
+
+    public static getInstance(): Storage {
+        if (!Storage.instance) {
+            Storage.instance = new Storage();
+        }
+        return Storage.instance;
     }
 
     /**
