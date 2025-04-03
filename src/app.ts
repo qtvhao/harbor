@@ -303,7 +303,7 @@ class KafkaExpressApp {
         }
 
         console.debug(`Condition: completed task with ID ${taskId} found`);
-        res.status(200).json({ task });
+        res.status(200).json({ downloads: task.downloads, accountId: task.accountId, id: task.id });
     }
 
     private async downloadCompletedTask(req: Request, res: Response): Promise<void> {
@@ -334,23 +334,15 @@ class KafkaExpressApp {
             return;
         }
 
-        const downloadPath = `/tmp/${fileName}`;
-        try {
-            await this.storage.downloadFile(fileName, downloadPath);
-            console.debug(`Condition: file ${fileName} downloaded successfully to ${downloadPath}`);
-            res.setHeader('Content-Type', 'video/mp4');
-            res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-            const fileStream = fs.createReadStream(downloadPath);
-            fileStream.pipe(res);
-            fileStream.on('error', (err) => {
-                console.error(`Error reading file ${fileName}:`, err);
-                res.status(500).json({ error: `Failed to stream file ${fileName}.` });
-            });
-        } catch (error) {
-            console.debug(`Condition: failed to download file ${fileName}`);
-            console.error(`Failed to download file ${fileName}:`, error);
-            res.status(500).json({ error: `Failed to download file ${fileName}.` });
-        }
+        const fileStream = await this.storage.getReadableStream(fileName);
+        console.debug(`Condition: readable stream for file ${fileName} obtained successfully`);
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        fileStream.pipe(res);
+        fileStream.on('error', (err) => {
+            console.error(`Error streaming file ${fileName}:`, err);
+            res.status(500).json({ error: `Failed to stream file ${fileName}.` });
+        });
     }
 
     public start(): void {
