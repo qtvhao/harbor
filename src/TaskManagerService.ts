@@ -6,6 +6,7 @@ export class TaskManagerService {
     private pendingTasks: Map<string, Task> = new Map();
     private completedTasks: Map<string, Task> = new Map();
     private taskProgress: Map<string, Map<string, number>> = new Map();
+    private currentStepMap: Map<string, string> = new Map();
     private storage: Storage = Storage.getInstance();
 
     public getTaskForAccount(accountId: number): Task | null {
@@ -67,5 +68,17 @@ export class TaskManagerService {
 
         const totalProgress = Array.from(subtasks.values()).reduce((sum, val) => sum + val, 0);
         return totalProgress / subtasks.size;
+    }
+
+    public setCurrentStep(taskId: string, step: string): void {
+        this.currentStepMap.set(taskId, step);
+    }
+
+    public getCurrentStep(taskId: string): string | null {
+        return this.currentStepMap.has(taskId) ? this.currentStepMap.get(taskId)! : null;
+    }
+
+    public clearCurrentStep(taskId: string): void {
+        this.currentStepMap.delete(taskId);
     }
 }

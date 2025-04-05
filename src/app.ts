@@ -117,11 +117,13 @@ export class KafkaExpressApp {
             return;
         }
 
+        const currentStep: string | null = this.kafkaTaskService.getCurrentStep(taskId);
+
         const totalBars = 20;
         const filledBars = Math.round((progress / 100) * totalBars);
         const emptyBars = totalBars - filledBars;
         const progressBar = '🟩'.repeat(filledBars) + '⬜'.repeat(emptyBars);
-        res.status(200).json({ taskId, progress, progressBar });
+        res.status(200).json({ taskId, progress, progressBar, currentStep });
     }
 
     public start(): void {

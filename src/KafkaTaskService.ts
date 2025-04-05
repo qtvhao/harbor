@@ -41,8 +41,14 @@ export class KafkaTaskService {
     private initializeTaskProgressConsumer(): void {
         startKafkaConsumer({
             fromBeginning: true,
-            topic: process.env.SUBTASK_PROGRESS_TOPIC || 'task-progress-topic',
+            topic: process.env.TASK_PROGRESS_TOPIC || 'task-progress-topic',
             groupId: 'harbor-task-progress-group',
+            eachMessageHandler: this.handleSubtaskProgressMessage.bind(this),
+        });
+        startKafkaConsumer({
+            fromBeginning: true,
+            topic: process.env.SUBTASK_PROGRESS_TOPIC || 'subtask-progress-topic',
+            groupId: 'harbor-subtask-progress-group',
             eachMessageHandler: this.handleTaskProgressMessage.bind(this),
         });
     }
@@ -98,6 +104,26 @@ export class KafkaTaskService {
         } else {
             await new Promise(resolve => setTimeout(resolve, 60000));
             throw new Error(`Task with ID ${rawPayload.taskId} not found in pending tasks`);
+        }
+    }
+    private async handleSubtaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
+        const progressPayload = this.parseKafkaMessage(message);
+        if (typeof progressPayload.parentTaskId !== 'string') {
+            console.log(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
+            throw new Error(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
+        }
+        const task = this.taskManager.getTaskById(progressPayload.parentTaskId);
+
+        const currentStep = progressPayload.currentStep;
+
+        if (task) {
+            this.taskManager.setCurrentStep(task.id, currentStep);
+        } else {
+            console.error('Progress update received for unknown task. Context:', {
+                parentTaskId: progressPayload.parentTaskId,
+                correlationId: progressPayload.correlationId,
+                progress: progressPayload.progress,
+            });
         }
     }
 
@@ -159,5 +185,9 @@ export class KafkaTaskService {
 
     public getCurrentAverageProgress(taskId: string): number | null {
         return this.taskManager.getAverageSubtaskProgress(taskId);
+    }
+
+    public getCurrentStep(taskId: string): string | null {
+        return this.taskManager.getCurrentStep(taskId)
     }
 }
