@@ -8,6 +8,7 @@ import { Task } from './definitions/Task.js';
 interface TaskResponsePayload {
     taskId: string;
     accountId: number;
+    parentTaskId: string;
     downloads: string[];
 }
 
@@ -47,12 +48,21 @@ export class KafkaTaskService {
         }
     }
 
+    private isValidTaskPayload(payload: TaskResponsePayload): boolean {
+        return (
+            typeof payload.accountId === 'number' &&
+            typeof payload.parentTaskId === 'string' &&
+            Array.isArray(payload.downloads)
+        );
+    }
+
     private async handleNewTaskMessage({ message }: EachMessagePayload): Promise<void> {
         const payload = this.parseKafkaMessage(message);
-        if (!payload || !payload.accountId) return;
+        if (!payload || !this.isValidTaskPayload(payload)) return;
 
         const task: Task = {
             id: uuidv4(),
+            parentTaskId: payload.parentTaskId,
             payload,
             accountId: payload.accountId,
         };

@@ -1,5 +1,5 @@
-import { Task } from "./definitions/Task";
-import { Storage } from "./utils/storage";
+import { Task } from "./definitions/Task.js";
+import { Storage } from "./utils/storage.js";
 
 export class TaskManagerService {
     taskQueue: Task[] = [];
