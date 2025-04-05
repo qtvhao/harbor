@@ -67,10 +67,12 @@ export class KafkaTaskService {
     private async handleNewTaskMessage({ message }: EachMessagePayload): Promise<void> {
         const payload = this.parseKafkaMessage(message);
         if (!payload) {
+            await new Promise(resolve => setTimeout(resolve, 60000));
             throw new Error('Invalid Kafka message: message body is empty or cannot be parsed');
         }
 
         if (!this.isValidTaskPayload(payload)) {
+            await new Promise(resolve => setTimeout(resolve, 60000));
             throw new Error(`Invalid task payload received: ${JSON.stringify(payload)}`);
         }
 
@@ -94,6 +96,7 @@ export class KafkaTaskService {
                 downloads: rawPayload.downloads,
             });
         } else {
+            await new Promise(resolve => setTimeout(resolve, 60000));
             throw new Error(`Task with ID ${rawPayload.taskId} not found in pending tasks`);
         }
     }
@@ -101,10 +104,12 @@ export class KafkaTaskService {
     private async handleTaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
         const progressPayload = this.parseKafkaMessage(message);
         if (!progressPayload) {
+            await new Promise(resolve => setTimeout(resolve, 60000));
             throw new Error('Invalid Kafka message: progress message body is empty or cannot be parsed');
         }
 
         if (typeof progressPayload.parentTaskId !== 'string' || typeof progressPayload.correlationId !== 'string' || typeof progressPayload.progress !== 'number') {
+            await new Promise(resolve => setTimeout(resolve, 60000));
             throw new Error(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
         }
 
@@ -115,6 +120,12 @@ export class KafkaTaskService {
             const average = this.taskManager.updateSubtaskProgress(task.id, subtaskId, progressPayload.progress);
             console.log(`Updated progress for task ${task.id}: ${progressPayload.progress}%, avg: ${average.toFixed(2)}%`, progressPayload);
         } else {
+            console.error('Progress update received for unknown task. Context:', {
+                parentTaskId: progressPayload.parentTaskId,
+                correlationId: progressPayload.correlationId,
+                progress: progressPayload.progress,
+            });
+            await new Promise(resolve => setTimeout(resolve, 60000));
             throw new Error(`Task with ID ${progressPayload.correlationId} not found for progress update`);
         }
     }
