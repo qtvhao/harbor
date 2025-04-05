@@ -2,7 +2,8 @@ import { sendMessageToQueue } from './utils/kafkaHelper.js';
 import { startKafkaConsumer } from './kafka/kafkaConsumer.js';
 import { EachMessagePayload } from 'kafkajs';
 import { v4 as uuidv4 } from 'uuid';
-import { Storage } from './utils/storage.js';
+import { TaskManagerService } from './TaskManagerService.js';
+import { Task } from './definitions/Task.js';
 
 interface TaskResponsePayload {
     taskId: string;
@@ -10,19 +11,9 @@ interface TaskResponsePayload {
     downloads: string[];
 }
 
-interface Task {
-    id: string;
-    payload: any;
-    downloads?: string[];
-    accountId: number;
-}
-
 export class KafkaTaskService {
-    private taskQueue: Task[] = [];
-    private pendingTasks: Map<string, Task> = new Map();
-    private completedTasks: Map<string, Task> = new Map();
-    private storage: Storage = Storage.getInstance();
-
+    private taskManager = new TaskManagerService();
+    
     constructor() {
         this.initializeNewTaskConsumer();
         this.initializeTaskResponseConsumer();
@@ -56,18 +47,6 @@ export class KafkaTaskService {
         }
     }
 
-    private removePendingTask(taskId: string): Task | null {
-        const task = this.pendingTasks.get(taskId);
-        if (!task) return null;
-
-        this.pendingTasks.delete(taskId);
-        return task;
-    }
-
-    private markTaskAsCompleted(task: Task): void {
-        this.completedTasks.set(task.id, task);
-    }
-
     private async handleNewTaskMessage({ message }: EachMessagePayload): Promise<void> {
         const payload = this.parseKafkaMessage(message);
         if (!payload || !payload.accountId) return;
@@ -78,16 +57,16 @@ export class KafkaTaskService {
             accountId: payload.accountId,
         };
 
-        this.taskQueue.push(task);
+        this.taskManager.taskQueue.push(task);
     }
 
     private async handleTaskResponseMessage({ message }: EachMessagePayload): Promise<void> {
         const rawPayload = this.parseKafkaMessage(message);
         if (!rawPayload || !rawPayload.taskId) return;
 
-        const task = this.removePendingTask(rawPayload.taskId);
+        const task = this.taskManager.removePendingTask(rawPayload.taskId);
         if (task) {
-            this.markTaskAsCompleted({
+            this.taskManager.markTaskAsCompleted({
                 ...task,
                 downloads: rawPayload.downloads,
             });
@@ -99,27 +78,19 @@ export class KafkaTaskService {
     }
 
     public getTaskForAccount(accountId: number): Task | null {
-        const taskIndex = this.taskQueue.findIndex(task => task.accountId === accountId);
-        if (taskIndex === -1) {
-            return null;
-        }
-
-        const [task] = this.taskQueue.splice(taskIndex, 1);
-        this.pendingTasks.set(task.id, task);
-        return task;
+        return this.taskManager.getTaskForAccount(accountId);
     }
 
     public getCompletedTask(taskId: string): Task | null {
-        return this.completedTasks.get(taskId) || null;
+        return this.taskManager.getCompletedTask(taskId);
     }
 
     public getDownloadFileName(taskId: string, downloadIndex: number): string | null {
-        const task = this.completedTasks.get(taskId);
-        return task?.downloads?.[downloadIndex] || null;
+        return this.taskManager.getDownloadFileName(taskId, downloadIndex);
     }
 
     public async getDownloadStream(fileName: string): Promise<NodeJS.ReadableStream> {
-        return this.storage.getReadableStream(fileName);
+        return this.taskManager.getDownloadStream(fileName);
     }
 
     public async dispatchTaskToKafka(task: Task): Promise<void> {
