@@ -125,8 +125,6 @@ export class KafkaTaskService {
                 correlationId: progressPayload.correlationId,
                 progress: progressPayload.progress,
             });
-            await new Promise(resolve => setTimeout(resolve, 60000));
-            throw new Error(`Task with ID ${progressPayload.correlationId} not found for progress update`);
         }
     }
 
@@ -157,5 +155,9 @@ export class KafkaTaskService {
             payload: task.payload,
             accountId: task.accountId,
         });
+    }
+
+    public getCurrentAverageProgress(taskId: string): number | null {
+        return this.taskManager.getAverageSubtaskProgress(taskId);
     }
 }

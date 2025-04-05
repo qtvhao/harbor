@@ -44,6 +44,8 @@ export class KafkaExpressApp {
         this.app.get('/tasks/completed/:taskId', (req, res) => this.getCompletedTask(req, res));
 
         this.app.get('/tasks/completed/:taskId/downloads/:download', (req, res) => this.downloadCompletedTask(req, res));
+
+        this.app.get('/tasks/progress/:taskId', (req, res) => this.getTaskProgress(req, res));
     }
 
     private async dispatchJob(req: Request, res: Response): Promise<void> {
@@ -104,6 +106,22 @@ export class KafkaExpressApp {
         } catch (err) {
             res.status(500).json({ error: 'Failed to stream download file.' });
         }
+    }
+
+    private getTaskProgress(req: Request, res: Response): void {
+        const { taskId } = req.params;
+        const progress = this.kafkaTaskService.getCurrentAverageProgress(taskId);
+
+        if (progress === null || progress === undefined) {
+            res.status(404).json({ error: 'Task not found or progress unavailable.' });
+            return;
+        }
+
+        const totalBars = 20;
+        const filledBars = Math.round((progress / 100) * totalBars);
+        const emptyBars = totalBars - filledBars;
+        const progressBar = '🟩'.repeat(filledBars) + '⬜'.repeat(emptyBars);
+        res.status(200).json({ taskId, progress, progressBar });
     }
 
     public start(): void {
