@@ -60,8 +60,7 @@ export class KafkaTaskService {
 
     private isValidTaskPayload(payload: TaskResponsePayload): boolean {
         return (
-            typeof payload.accountId === 'number' &&
-            Array.isArray(payload.downloads)
+            typeof payload.accountId === 'number'
         );
     }
 
