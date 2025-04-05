@@ -108,12 +108,12 @@ export class KafkaTaskService {
             throw new Error(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
         }
 
-        const task = this.taskManager.getTaskById(progressPayload.correlationId);
+        const task = this.taskManager.getTaskById(progressPayload.parentTaskId);
 
         if (task) {
             const subtaskId = progressPayload.correlationId;
             const average = this.taskManager.updateSubtaskProgress(task.id, subtaskId, progressPayload.progress);
-            console.log(`Updated progress for task ${task.id}: ${progressPayload.progress}%, avg: ${average.toFixed(2)}%`);
+            console.log(`Updated progress for task ${task.id}: ${progressPayload.progress}%, avg: ${average.toFixed(2)}%`, progressPayload);
         } else {
             throw new Error(`Task with ID ${progressPayload.correlationId} not found for progress update`);
         }
