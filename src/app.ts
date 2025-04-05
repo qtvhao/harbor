@@ -50,6 +50,7 @@ export class KafkaExpressApp {
         const { accountId } = req.body;
 
         if (typeof accountId !== 'number') {
+            console.warn('dispatchJob: Received invalid accountId:', req.body);
             res.status(400).json({ error: 'Missing or invalid accountId.' });
             return;
         }
