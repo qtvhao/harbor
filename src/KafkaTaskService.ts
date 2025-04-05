@@ -41,7 +41,7 @@ export class KafkaTaskService {
     private initializeTaskProgressConsumer(): void {
         startKafkaConsumer({
             fromBeginning: true,
-            topic: process.env.TASK_PROGRESS_TOPIC || 'task-progress-topic',
+            topic: process.env.SUBTASK_PROGRESS_TOPIC || 'task-progress-topic',
             groupId: 'harbor-task-progress-group',
             eachMessageHandler: this.handleTaskProgressMessage.bind(this),
         });
