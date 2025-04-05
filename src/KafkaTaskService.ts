@@ -104,7 +104,7 @@ export class KafkaTaskService {
             throw new Error('Invalid Kafka message: progress message body is empty or cannot be parsed');
         }
 
-        if (typeof progressPayload.correlationId !== 'string' || typeof progressPayload.progress !== 'number') {
+        if (typeof progressPayload.parentTaskId !== 'string' || typeof progressPayload.correlationId !== 'string' || typeof progressPayload.progress !== 'number') {
             throw new Error(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
         }
 
