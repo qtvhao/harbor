@@ -107,17 +107,17 @@ export class KafkaTaskService {
             throw new Error('Invalid Kafka message: progress message body is empty or cannot be parsed');
         }
 
-        if (typeof progressPayload.taskId !== 'string' || typeof progressPayload.progress !== 'number') {
+        if (typeof progressPayload.correlationId !== 'string' || typeof progressPayload.progress !== 'number') {
             throw new Error(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
         }
 
-        const task = this.taskManager.getTaskById(progressPayload.taskId);
+        const task = this.taskManager.getTaskById(progressPayload.correlationId);
 
         if (task) {
             const average = this.taskManager.updateTaskProgress(task, progressPayload.progress);
             console.log(`Updated progress for task ${task.id}: ${progressPayload.progress}%, avg: ${average.toFixed(2)}%`);
         } else {
-            throw new Error(`Task with ID ${progressPayload.taskId} not found for progress update`);
+            throw new Error(`Task with ID ${progressPayload.correlationId} not found for progress update`);
         }
     }
 
