@@ -18,6 +18,7 @@ export class KafkaTaskService {
     constructor() {
         this.initializeNewTaskConsumer();
         this.initializeTaskResponseConsumer();
+        this.initializeTaskProgressConsumer();
     }
 
     private initializeNewTaskConsumer(): void {
@@ -37,7 +38,16 @@ export class KafkaTaskService {
         });
     }
 
-    private parseKafkaMessage(message: EachMessagePayload['message']): TaskResponsePayload | null {
+    private initializeTaskProgressConsumer(): void {
+        startKafkaConsumer({
+            fromBeginning: true,
+            topic: process.env.TASK_PROGRESS_TOPIC || 'task-progress-topic',
+            groupId: 'harbor-task-progress-group',
+            eachMessageHandler: this.handleTaskProgressMessage.bind(this),
+        });
+    }
+
+    private parseKafkaMessage(message: EachMessagePayload['message']): any | null {
         const messageValue = message.value?.toString();
         if (!messageValue) return null;
 
@@ -58,7 +68,13 @@ export class KafkaTaskService {
 
     private async handleNewTaskMessage({ message }: EachMessagePayload): Promise<void> {
         const payload = this.parseKafkaMessage(message);
-        if (!payload || !this.isValidTaskPayload(payload)) return;
+        if (!payload) {
+            throw new Error('Invalid Kafka message: message body is empty or cannot be parsed');
+        }
+
+        if (!this.isValidTaskPayload(payload)) {
+            throw new Error(`Invalid task payload received: ${JSON.stringify(payload)}`);
+        }
 
         const task: Task = {
             id: uuidv4(),
@@ -80,6 +96,28 @@ export class KafkaTaskService {
                 ...task,
                 downloads: rawPayload.downloads,
             });
+        } else {
+            throw new Error(`Task with ID ${rawPayload.taskId} not found in pending tasks`);
+        }
+    }
+
+    private async handleTaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
+        const progressPayload = this.parseKafkaMessage(message);
+        if (!progressPayload) {
+            throw new Error('Invalid Kafka message: progress message body is empty or cannot be parsed');
+        }
+
+        if (typeof progressPayload.taskId !== 'string' || typeof progressPayload.progress !== 'number') {
+            throw new Error(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
+        }
+
+        const task = this.taskManager.getTaskById(progressPayload.taskId);
+
+        if (task) {
+            const average = this.taskManager.updateTaskProgress(task, progressPayload.progress);
+            console.log(`Updated progress for task ${task.id}: ${progressPayload.progress}%, avg: ${average.toFixed(2)}%`);
+        } else {
+            throw new Error(`Task with ID ${progressPayload.taskId} not found for progress update`);
         }
     }
 

@@ -62,4 +62,8 @@ export class TaskManagerService {
 
         return averageProgress;
     }
+
+    public getTaskById(taskId: string): Task | null {
+        return this.pendingTasks.get(taskId) || this.completedTasks.get(taskId) || null;
+    }
 }
