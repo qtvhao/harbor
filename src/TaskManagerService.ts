@@ -44,26 +44,28 @@ export class TaskManagerService {
         this.completedTasks.set(task.id, task);
     }
 
-    public getTaskProgress(parentTaskId: string, taskId: string): number | null {
-        const subTaskMap = this.taskProgress.get(parentTaskId);
-        return subTaskMap?.get(taskId) ?? null;
-    }
-
-    public updateTaskProgress(task: Task, progress: number): number {
-        const parentId = task.parentTaskId || task.id;
-        if (!this.taskProgress.has(parentId)) {
-            this.taskProgress.set(parentId, new Map());
-        }
-        const subTaskMap = this.taskProgress.get(parentId)!;
-        subTaskMap.set(task.id, progress);
-
-        const totalProgress = Array.from(subTaskMap.values()).reduce((sum, p) => sum + p, 0);
-        const averageProgress = totalProgress / subTaskMap.size;
-
-        return averageProgress;
-    }
-
     public getTaskById(taskId: string): Task | null {
         return this.pendingTasks.get(taskId) || this.completedTasks.get(taskId) || null;
+    }
+
+    public updateSubtaskProgress(taskId: string, subtaskId: string, progress: number): number {
+        if (!this.taskProgress.has(taskId)) {
+            this.taskProgress.set(taskId, new Map());
+        }
+
+        const subtaskProgress = this.taskProgress.get(taskId)!;
+        subtaskProgress.set(subtaskId, progress);
+
+        return this.getAverageSubtaskProgress(taskId)
+    }
+
+    public getAverageSubtaskProgress(taskId: string): number {
+        const subtasks = this.taskProgress.get(taskId);
+        if (!subtasks || subtasks.size === 0) {
+            return 0;
+        }
+
+        const totalProgress = Array.from(subtasks.values()).reduce((sum, val) => sum + val, 0);
+        return totalProgress / subtasks.size;
     }
 }

@@ -61,7 +61,6 @@ export class KafkaTaskService {
     private isValidTaskPayload(payload: TaskResponsePayload): boolean {
         return (
             typeof payload.accountId === 'number' &&
-            typeof payload.parentTaskId === 'string' &&
             Array.isArray(payload.downloads)
         );
     }
@@ -78,7 +77,6 @@ export class KafkaTaskService {
 
         const task: Task = {
             id: uuidv4(),
-            parentTaskId: payload.parentTaskId,
             payload,
             accountId: payload.accountId,
         };
@@ -114,7 +112,8 @@ export class KafkaTaskService {
         const task = this.taskManager.getTaskById(progressPayload.correlationId);
 
         if (task) {
-            const average = this.taskManager.updateTaskProgress(task, progressPayload.progress);
+            const subtaskId = progressPayload.correlationId;
+            const average = this.taskManager.updateSubtaskProgress(task.id, subtaskId, progressPayload.progress);
             console.log(`Updated progress for task ${task.id}: ${progressPayload.progress}%, avg: ${average.toFixed(2)}%`);
         } else {
             throw new Error(`Task with ID ${progressPayload.correlationId} not found for progress update`);

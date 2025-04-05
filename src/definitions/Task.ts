@@ -1,6 +1,6 @@
 export interface Task {
     id: string;
-    parentTaskId: string;
+    subtaskIds?: string[];
     payload: any;
     downloads?: string[];
     accountId: number;
