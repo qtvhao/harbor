@@ -5,6 +5,7 @@ export class TaskManagerService {
     taskQueue: Task[] = [];
     private pendingTasks: Map<string, Task> = new Map();
     private completedTasks: Map<string, Task> = new Map();
+    private taskProgress: Map<string, Map<string, number>> = new Map();
     private storage: Storage = Storage.getInstance();
 
     public getTaskForAccount(accountId: number): Task | null {
@@ -41,5 +42,24 @@ export class TaskManagerService {
 
     public markTaskAsCompleted(task: Task): void {
         this.completedTasks.set(task.id, task);
+    }
+
+    public getTaskProgress(parentTaskId: string, taskId: string): number | null {
+        const subTaskMap = this.taskProgress.get(parentTaskId);
+        return subTaskMap?.get(taskId) ?? null;
+    }
+
+    public updateTaskProgress(task: Task, progress: number): number {
+        const parentId = task.parentTaskId || task.id;
+        if (!this.taskProgress.has(parentId)) {
+            this.taskProgress.set(parentId, new Map());
+        }
+        const subTaskMap = this.taskProgress.get(parentId)!;
+        subTaskMap.set(task.id, progress);
+
+        const totalProgress = Array.from(subTaskMap.values()).reduce((sum, p) => sum + p, 0);
+        const averageProgress = totalProgress / subTaskMap.size;
+
+        return averageProgress;
     }
 }
