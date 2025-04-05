@@ -110,7 +110,7 @@ export class KafkaTaskService {
 
         if (typeof progressPayload.parentTaskId !== 'string' || typeof progressPayload.correlationId !== 'string' || typeof progressPayload.progress !== 'number') {
             await new Promise(resolve => setTimeout(resolve, 60000));
-            throw new Error(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
+            console.log(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
         }
 
         const task = this.taskManager.getTaskById(progressPayload.parentTaskId);
