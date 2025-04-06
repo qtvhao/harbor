@@ -110,7 +110,7 @@ export class KafkaTaskService {
     }
     private async handleTaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
         const progressPayload = this.parseKafkaMessage(message);
-        if (typeof progressPayload.parentTaskId !== 'string') {
+        if (typeof progressPayload.parentTaskId !== 'string' || typeof progressPayload.currentStep !== 'string') {
             console.log(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
             throw new Error(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
         }
@@ -124,7 +124,7 @@ export class KafkaTaskService {
             console.error('Progress update received for unknown task. Context:', {
                 parentTaskId: progressPayload.parentTaskId,
                 correlationId: progressPayload.correlationId,
-                progress: progressPayload.progress,
+                currentStep: progressPayload.currentStep,
             });
         }
     }
