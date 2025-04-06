@@ -12,3 +12,10 @@ export const getKafkaConnection = (): Kafka => kafkaInstance;
 export const getKafkaAdminConnection = (): Admin => {
     return kafkaInstance.admin();
 };
+
+export const createNewKafkaConnection = (clientId: string): Kafka => {
+    return new Kafka({
+        clientId,
+        brokers: config.kafka.brokers,
+    });
+};

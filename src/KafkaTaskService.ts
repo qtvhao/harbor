@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { TaskManagerService } from './TaskManagerService.js';
 import { Task } from './definitions/Task.js';
 import { config } from './config.js'
+import { hostname } from 'os';
 
 interface TaskResponsePayload {
     taskId: string;
@@ -23,7 +24,7 @@ export class KafkaTaskService {
     }
 
     private initializeNewTaskConsumer(): void {
-        startKafkaConsumer({
+        startKafkaConsumer('initializeNewTaskConsumer-' + hostname(), {
             topic: process.env.NEW_TASK_TOPIC || 'new-task-topic',
             groupId: 'harbor-new-task-group',
             eachMessageHandler: this.handleNewTaskMessage.bind(this),
@@ -31,7 +32,7 @@ export class KafkaTaskService {
     }
 
     private initializeTaskResponseConsumer(): void {
-        startKafkaConsumer({
+        startKafkaConsumer('initializeTaskResponseConsumer-' + hostname(), {
             fromBeginning: true,
             topic: process.env.TASK_RESPONSE_TOPIC || 'task-response-topic',
             groupId: 'harbor-task-response-group',
@@ -40,13 +41,13 @@ export class KafkaTaskService {
     }
 
     private initializeTaskProgressConsumer(): void {
-        startKafkaConsumer({
+        startKafkaConsumer('initializeTaskProgressConsumer-' + hostname(), {
             fromBeginning: true,
             topic: config.kafka.topics.harborProgress,
             groupId: 'harbor-task-progress-group',
             eachMessageHandler: this.handleTaskProgressMessage.bind(this),
         });
-        startKafkaConsumer({
+        startKafkaConsumer('initializeSubtaskProgressConsumer-' + hostname(), {
             fromBeginning: true,
             topic: config.kafka.topics.subtaskProgress,
             groupId: 'harbor-subtask-progress-group',
