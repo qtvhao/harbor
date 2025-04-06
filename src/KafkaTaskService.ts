@@ -108,7 +108,7 @@ export class KafkaTaskService {
             throw new Error(`Task with ID ${rawPayload.taskId} not found in pending tasks`);
         }
     }
-    private async handleSubtaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
+    private async handleTaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
         const progressPayload = this.parseKafkaMessage(message);
         if (typeof progressPayload.parentTaskId !== 'string') {
             console.log(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
@@ -129,7 +129,7 @@ export class KafkaTaskService {
         }
     }
 
-    private async handleTaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
+    private async handleSubtaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
         const progressPayload = this.parseKafkaMessage(message);
         if (!progressPayload) {
             console.log('Invalid Kafka message: progress message body is empty or cannot be parsed')
