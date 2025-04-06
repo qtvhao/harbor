@@ -4,6 +4,7 @@ import { EachMessagePayload } from 'kafkajs';
 import { v4 as uuidv4 } from 'uuid';
 import { TaskManagerService } from './TaskManagerService.js';
 import { Task } from './definitions/Task.js';
+import { config } from './config.js'
 
 interface TaskResponsePayload {
     taskId: string;
@@ -41,15 +42,15 @@ export class KafkaTaskService {
     private initializeTaskProgressConsumer(): void {
         startKafkaConsumer({
             fromBeginning: true,
-            topic: process.env.TASK_PROGRESS_TOPIC || 'task-progress-topic',
+            topic: config.kafka.topics.harborProgress,
             groupId: 'harbor-task-progress-group',
-            eachMessageHandler: this.handleSubtaskProgressMessage.bind(this),
+            eachMessageHandler: this.handleTaskProgressMessage.bind(this),
         });
         startKafkaConsumer({
             fromBeginning: true,
-            topic: process.env.SUBTASK_PROGRESS_TOPIC || 'subtask-progress-topic',
+            topic: config.kafka.topics.subtaskProgress,
             groupId: 'harbor-subtask-progress-group',
-            eachMessageHandler: this.handleTaskProgressMessage.bind(this),
+            eachMessageHandler: this.handleSubtaskProgressMessage.bind(this),
         });
     }
 
@@ -130,13 +131,15 @@ export class KafkaTaskService {
     private async handleTaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
         const progressPayload = this.parseKafkaMessage(message);
         if (!progressPayload) {
+            console.log('Invalid Kafka message: progress message body is empty or cannot be parsed')
             await new Promise(resolve => setTimeout(resolve, 60000));
             throw new Error('Invalid Kafka message: progress message body is empty or cannot be parsed');
         }
 
         if (typeof progressPayload.parentTaskId !== 'string' || typeof progressPayload.correlationId !== 'string' || typeof progressPayload.progress !== 'number') {
-            await new Promise(resolve => setTimeout(resolve, 60000));
             console.log(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
+            await new Promise(resolve => setTimeout(resolve, 60000));
+            throw new Error(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
         }
 
         const task = this.taskManager.getTaskById(progressPayload.parentTaskId);
