@@ -123,7 +123,6 @@ export class KafkaTaskService {
         } else {
             console.error('Progress update received for unknown task. Context:', {
                 parentTaskId: progressPayload.parentTaskId,
-                correlationId: progressPayload.correlationId,
                 currentStep: progressPayload.currentStep,
             });
         }
