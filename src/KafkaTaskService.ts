@@ -101,6 +101,7 @@ export class KafkaTaskService {
         if (task) {
             this.taskManager.markTaskAsCompleted({
                 ...task,
+                markdown_text: rawPayload.markdown_text,
                 downloads: rawPayload.downloads,
             });
         } else {
