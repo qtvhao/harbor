@@ -6,6 +6,7 @@ import { TaskManagerService } from './TaskManagerService.js';
 import { Task } from './definitions/Task.js';
 import { config } from './config.js'
 import { hostname } from 'os';
+import { Lexer } from 'marked';
 
 interface TaskResponsePayload {
     taskId: string;
@@ -16,11 +17,13 @@ interface TaskResponsePayload {
 
 export class KafkaTaskService {
     private taskManager = new TaskManagerService();
+    private lexer: Lexer;
     
     constructor() {
         this.initializeNewTaskConsumer();
         this.initializeTaskResponseConsumer();
         this.initializeTaskProgressConsumer();
+        this.lexer = new Lexer();
     }
 
     private initializeNewTaskConsumer(): void {
@@ -105,6 +108,7 @@ export class KafkaTaskService {
                 payload: task.payload,
                 accountId: task.accountId,
                 markdown_text: rawPayload.content,
+                tokens: this.lexer.lex(rawPayload.content),
                 downloads: rawPayload.downloads,
             });
         } else {
