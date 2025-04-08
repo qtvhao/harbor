@@ -124,10 +124,11 @@ export class KafkaTaskService {
         }
         const task = this.taskManager.getTaskById(progressPayload.parentTaskId);
 
+        const elapsedMs = progressPayload.elapsedMs;
         const currentStep = progressPayload.currentStep;
 
         if (task) {
-            this.taskManager.setCurrentStep(task.id, currentStep);
+            this.taskManager.setCurrentStep(task.id, `[${elapsedMs}ms] ${currentStep}`);
         } else {
             console.error('Progress update received for unknown task. Context:', {
                 parentTaskId: progressPayload.parentTaskId,
