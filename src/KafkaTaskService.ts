@@ -100,7 +100,10 @@ export class KafkaTaskService {
         const task = this.taskManager.removePendingTask(rawPayload.taskId);
         if (task) {
             this.taskManager.markTaskAsCompleted({
-                ...task,
+                // ...task,
+                id: task.id,
+                payload: task.payload,
+                accountId: task.accountId,
                 markdown_text: rawPayload.content,
                 downloads: rawPayload.downloads,
             });
