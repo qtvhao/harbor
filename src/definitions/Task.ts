@@ -1,6 +1,7 @@
 export interface Task {
     id: string;
-    markdown_text?: string;
+    content?: string;
+    translated?: any[];
     tokens?: any;
     subtaskIds?: string[];
     payload: any;

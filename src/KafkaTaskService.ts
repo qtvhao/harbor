@@ -11,6 +11,8 @@ import { Lexer } from 'marked';
 interface TaskResponsePayload {
     taskId: string;
     accountId: number;
+    content: any;
+    translated: any;
     parentTaskId: string;
     downloads: string[];
 }
@@ -98,25 +100,37 @@ export class KafkaTaskService {
 
     private async handleTaskResponseMessage({ message }: EachMessagePayload): Promise<void> {
         const rawPayload = this.parseKafkaMessage(message);
-        if (!rawPayload || !rawPayload.taskId) return;
+        const validatedPayload = this.parseAndValidateTaskResponse(rawPayload);
+        if (!validatedPayload) return;
 
-        const task = this.taskManager.removePendingTask(rawPayload.taskId);
+        const task = this.taskManager.removePendingTask(validatedPayload.taskId);
         if (task) {
-            this.taskManager.markTaskAsCompleted({
-                id: task.id,
-                payload: task.payload,
-                accountId: task.accountId,
-                markdown_text: rawPayload.content,
-                tokens: this.lexer.lex(rawPayload.content.map((clip: any) => {
-                    return clip.original
-                  }).join("\n\n")),
-                downloads: rawPayload.downloads,
-            });
+            this.completeTask(task, validatedPayload);
         } else {
             await new Promise(resolve => setTimeout(resolve, 60000));
-            throw new Error(`Task with ID ${rawPayload.taskId} not found in pending tasks`);
+            throw new Error(`Task with ID ${validatedPayload.taskId} not found in pending tasks`);
         }
     }
+
+    private parseAndValidateTaskResponse(payload: any): TaskResponsePayload | null {
+        if (!payload || !payload.taskId) return null;
+        payload.translated = payload.content
+        payload.content = payload.content.map((clip: any) => clip.original).join("\n\n")
+        return payload as TaskResponsePayload;
+    }
+
+    private completeTask(task: Task, rawPayload: TaskResponsePayload): void {
+        this.taskManager.markTaskAsCompleted({
+            id: task.id,
+            payload: task.payload,
+            accountId: task.accountId,
+            content: rawPayload.content,
+            translated: rawPayload.translated,
+            tokens: this.lexer.lex(rawPayload.content),
+            downloads: rawPayload.downloads,
+        });
+    }
+
     private async handleTaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
         const progressPayload = this.parseKafkaMessage(message);
         if (typeof progressPayload.parentTaskId !== 'string' || typeof progressPayload.currentStep !== 'string') {
