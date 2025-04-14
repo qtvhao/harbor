@@ -46,6 +46,10 @@ export class KafkaExpressApp {
         this.app.get('/tasks/completed/:taskId/downloads/:download', (req, res) => this.downloadCompletedTask(req, res));
 
         this.app.get('/tasks/progress/:taskId', (req, res) => this.getTaskProgress(req, res));
+
+        this.app.post('/tasks/completed/:taskId/archive', (req, res) => this.archiveCompletedTask(req, res));
+
+        this.app.get('/tasks/completed/account/:accountId', (req, res) => this.getCompletedTasksForAccount(req, res));
     }
 
     private async dispatchJob(req: Request, res: Response): Promise<void> {
@@ -124,6 +128,52 @@ export class KafkaExpressApp {
         const emptyBars = totalBars - filledBars;
         const progressBar = '🟩'.repeat(filledBars) + '⬜'.repeat(emptyBars);
         res.status(200).json({ taskId, progress, progressBar, currentStep });
+    }
+
+    private archiveCompletedTask(req: Request, res: Response): void {
+        const { taskId } = req.params;
+
+        if (!taskId) {
+            res.status(400).json({ error: 'Missing taskId parameter.' });
+            return;
+        }
+
+        try {
+            const success = this.kafkaTaskService.taskManager.archiveCompletedTaskById(taskId);
+
+            if (!success) {
+                res.status(404).json({ error: 'Task not found or could not be archived.' });
+                return;
+            }
+
+            res.status(200).json({ message: 'Task archived successfully.' });
+        } catch (err) {
+            console.error('Error archiving task:', err);
+            res.status(500).json({ error: 'Failed to archive task.' });
+        }
+    }
+
+    private getCompletedTasksForAccount(req: Request, res: Response): void {
+        const { accountId } = req.params;
+
+        if (!accountId || isNaN(Number(accountId))) {
+            res.status(400).json({ error: 'Missing or invalid accountId parameter.' });
+            return;
+        }
+
+        try {
+            const tasks = this.kafkaTaskService.taskManager.getCompletedTasksForAccount(Number(accountId));
+
+            if (!tasks || tasks.length === 0) {
+                res.status(404).json({ error: 'No completed tasks found for this account.' });
+                return;
+            }
+
+            res.status(200).json({ accountId: Number(accountId), completedTasks: tasks });
+        } catch (err) {
+            console.error('Error retrieving completed tasks for account:', err);
+            res.status(500).json({ error: 'Failed to retrieve completed tasks.' });
+        }
     }
 
     public start(): void {

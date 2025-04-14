@@ -18,7 +18,7 @@ interface TaskResponsePayload {
 }
 
 export class KafkaTaskService {
-    private taskManager = new TaskManagerService();
+    taskManager = new TaskManagerService();
     private lexer: Lexer;
     
     constructor() {
