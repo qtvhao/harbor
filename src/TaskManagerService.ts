@@ -5,6 +5,7 @@ export class TaskManagerService {
     taskQueue: Task[] = [];
     private pendingTasks: Map<string, Task> = new Map();
     private completedTasks: Map<string, Task> = new Map();
+    private archivedTasks: Map<string, Task> = new Map();
     private taskProgress: Map<string, Map<string, number>> = new Map();
     private currentStepMap: Map<string, string> = new Map();
     private storage: Storage = Storage.getInstance();
@@ -80,5 +81,20 @@ export class TaskManagerService {
 
     public clearCurrentStep(taskId: string): void {
         this.currentStepMap.delete(taskId);
+    }
+
+    public getCompletedTasksForAccount(accountId: number): Task[] {
+        return Array.from(this.completedTasks.values()).filter(task => task.accountId === accountId);
+    }
+
+    public archiveCompletedTaskById(taskId: string): boolean {
+        const task = this.completedTasks.get(taskId);
+        if (!task) {
+            return false;
+        }
+    
+        this.completedTasks.delete(taskId);
+        this.archivedTasks.set(taskId, task);
+        return true;
     }
 }
