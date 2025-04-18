@@ -122,7 +122,7 @@ export class KafkaTaskService {
     private completeTask(task: Task, rawPayload: TaskResponsePayload): void {
         this.taskManager.markTaskAsCompleted({
             id: task.id,
-            payload: task.payload,
+            payload: '', // task.payload,
             accountId: task.accountId,
             content: rawPayload.content,
             translated: rawPayload.translated,
