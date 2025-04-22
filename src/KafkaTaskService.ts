@@ -7,6 +7,16 @@ import { Task } from './definitions/Task.js';
 import { config } from './config.js'
 import { hostname } from 'os';
 import { Lexer } from 'marked';
+import { createClient } from '@supabase/supabase-js'
+const supabaseUrl = process.env.SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_KEY
+if (typeof supabaseKey === 'undefined' || !supabaseKey) {
+    throw new Error('Missing Supabase key (SUPABASE_KEY). Check your environment variables.')
+}
+if (typeof supabaseUrl === 'undefined' || !supabaseUrl) {
+    throw new Error('Missing Supabase URL (SUPABASE_URL). Check your environment variables.')
+}
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 interface TaskResponsePayload {
     taskId: string;
@@ -20,7 +30,7 @@ interface TaskResponsePayload {
 export class KafkaTaskService {
     taskManager = new TaskManagerService();
     private lexer: Lexer;
-    
+
     constructor() {
         this.initializeNewTaskConsumer();
         this.initializeTaskResponseConsumer();
@@ -119,8 +129,8 @@ export class KafkaTaskService {
         return payload as TaskResponsePayload;
     }
 
-    private completeTask(task: Task, rawPayload: TaskResponsePayload): void {
-        this.taskManager.markTaskAsCompleted({
+    private async completeTask(task: Task, rawPayload: TaskResponsePayload): Promise<void> {
+        const payload = {
             id: task.id,
             payload: '', // task.payload,
             accountId: task.accountId,
@@ -128,7 +138,21 @@ export class KafkaTaskService {
             translated: rawPayload.translated,
             tokens: this.lexer.lex(rawPayload.content),
             downloads: rawPayload.downloads,
-        });
+        };
+
+        const { data, error } = await supabase
+            .from('completed_tasks')
+            .insert([
+                {
+                    accountId: task.accountId,
+                    taskId: task.id,
+                    payload: JSON.stringify(payload),
+                },
+            ])
+            .select()
+        console.log({ data, error })
+
+        this.taskManager.markTaskAsCompleted(payload);
     }
 
     private async handleTaskProgressMessage({ message }: EachMessagePayload): Promise<void> {
@@ -163,7 +187,7 @@ export class KafkaTaskService {
         if ("completed" === progressPayload.status) {
             progressPayload.progress = 100;
         }
- 
+
         if (typeof progressPayload.parentTaskId !== 'string' || typeof progressPayload.correlationId !== 'string' || typeof progressPayload.progress !== 'number') {
             console.log(`Invalid progress payload: ${JSON.stringify(progressPayload)}`);
             await new Promise(resolve => setTimeout(resolve, 60000));
